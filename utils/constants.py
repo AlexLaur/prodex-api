@@ -56,3 +56,25 @@ OPERATORS = {
     "minute": "__minute",
     "second": "__second",
 }
+
+
+TRANSLATION = {
+    "ContentType": "content-types",
+    "Permission": "permissions",
+    "Group": "groups",
+    "User": "users",
+    "Timelog": "timelogs",
+    "PublishedFile": "published-files",
+    "PublishedFileType": "published-file-types",
+    "LocalStorage": "local-storages",
+    "Project": "projects",
+    "Room": "rooms",
+    "Message": "messages",
+    "Customer": "customers",
+    "Contact": "contacts",
+    "PlanningItem": "planning-items",
+    "Status": "status",
+    "Invoice": "invoices",
+    "InvoiceItem": "invoice-items",
+    "EventLogEntry": "event-log-entries",
+}

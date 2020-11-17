@@ -30,13 +30,19 @@ import requests
 
 def connection(url, login, password):
     data = {"username": login, "password": password}
-    response = requests.post("%stoken-auth/" % url, data=data)
+    try:
+        response = requests.post(
+            "{url}/token-auth/".format(url=url), data=data
+        )
+    except requests.exceptions.ConnectionError as error:
+        # TODO raise connection error
+        return None, None
     if response.status_code != 200:
-        # raise bad request
+        # TODO raise bad request
         ...
 
     if not response.json().get("token", None):
-        # raise authentication error
+        # TODO raise authentication error
         ...
 
     token = response.json().get("token")

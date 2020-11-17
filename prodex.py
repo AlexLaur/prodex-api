@@ -25,7 +25,7 @@
 # SOFTWARE.
 
 
-from utils import constants
+from utils import constants, utils, decorators
 from libs import model
 
 
@@ -41,19 +41,63 @@ class ProdEx(object):
         :type password: str, optional
         """
         self.token = None
-        self.headers = None
+        self.header = None
 
-        self.url = "%sapi/" % url
+        self.url = utils.build_url_base(url=url)
 
         self.__connect(login, password)
 
     def __connect(self, login, password):
+        """Try to connect to prodex with the given credentials.
+        If the connection is done, the token's user
+        and the user object is returned.
+
+        :param login: The given login
+        :type login: str
+        :param password: The given password
+        :type password: str
+        :raises ValueError: Raise ValueError is token doesn't exists
+        """
         self.token, self.user = model.connection(
             url=self.url, login=login, password=password
         )
+        if not self.token:
+            raise ValueError("Token doesn't exists !")
+
+    def __build_header(self):
+        """Build the header for all request."""
+        self.header = {
+            "Authorization": "Token {token}".format(token=self.token)
+        }
+
+    @decorators.model_check
+    def find(self, model, filters=None, fields=None):
+        payload = utils.create_payload(filters=filters)
+        print(payload)
+
+    @decorators.model_check
+    def create(self, model, data):
+        ...
+
+    @decorators.model_check
+    def update(self, model, model_id, data):
+        ...
+
+    @decorators.model_check
+    def delete(self, model, model_id):
+        ...
+
+    @decorators.model_check
+    def restore(self, model, model_id):
+        ...
+
+    @decorators.model_check
+    def get_fields(self, model):
+        ...
 
 
 if __name__ == "__main__":
     prodex = ProdEx(
         url="http://127.0.0.1:8000/", login="root", password="PRODEX"
     )
+    prodex.find("User", filters=[["id", "is", 1]])
