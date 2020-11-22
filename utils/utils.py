@@ -52,7 +52,7 @@ def build_url_base(url):
     return final_url
 
 
-def create_payload(filters=None):
+def create_filters_payload(filters=None):
     """Create the paylod for the request with the given filters
 
     :param filters: The list of filters, defaults to None
@@ -101,4 +101,46 @@ def create_payload(filters=None):
                     field=field, operator=_operator
                 )
         payload[field] = value
+    return payload
+
+
+def create_fields_payload(action=None, fields=None):
+    """Creates a payload for all given fields. The action can be "field" or "omit"
+
+    :param action: The action for the request,
+    should be "fields" or "omit", defaults to None
+    :type action: str, optional
+    :param fields: The given fields, defaults to None
+    :type fields: list, optional
+    :return: The created payload
+    :rtype: list
+    """
+    payload = {}
+    if not fields:
+        return payload
+    payload[action] = ",".join(fields)
+    return payload
+
+
+def create_ordering_payload(order=None):
+    """Creates a payload for the given order
+
+    :param order: The order, defaults to None
+    :type order: dict, optional
+    :raises ValueError: If the order is not a dictionnary
+    :return: The created payload
+    :rtype: dict
+    """
+    payload = {}
+    if not order:
+        return payload
+    if not isinstance(order, dict):
+        return payload
+    direction = order.get("direction", "ASC")
+    field = order.get("field", None)
+    if direction not in ["ASC", "DESC"]:
+        raise ValueError("Direction must be ASC or DESC")
+    if direction == "DESC":
+        field = "-{field}".format(field=field)
+    payload["ordering"] = field
     return payload

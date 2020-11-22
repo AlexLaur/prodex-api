@@ -25,8 +25,9 @@
 # SOFTWARE.
 
 
-from utils import constants, utils, decorators
-from libs import model
+from utils import constants, utils
+from utils.decorators import model_check
+from libs.models import Model
 
 
 class ProdEx(object):
@@ -41,9 +42,11 @@ class ProdEx(object):
         :type password: str, optional
         """
         self.token = None
-        self.header = None
+        self.headers = None
 
         self.url = utils.build_url_base(url=url)
+
+        self.caller = Model(url=self.url)
 
         self.__connect(login, password)
 
@@ -58,46 +61,99 @@ class ProdEx(object):
         :type password: str
         :raises ValueError: Raise ValueError is token doesn't exists
         """
-        self.token, self.user = model.connection(
-            url=self.url, login=login, password=password
+        self.token, self.user = self.caller.connection(
+            login=login, password=password
         )
         if not self.token:
             raise ValueError("Token doesn't exists !")
 
-    def __build_header(self):
-        """Build the header for all request."""
-        self.header = {
-            "Authorization": "Token {token}".format(token=self.token)
-        }
+    def set_timeout(self, timeout):
+        """Sets the timeout for all request. By default the timeout is set to
+        None.
 
-    @decorators.model_check
-    def find(self, model, filters=None, fields=None):
-        payload = utils.create_payload(filters=filters)
-        print(payload)
+        :param timeout: The timeout in milliseconds
+        :type timeout: int
+        """
+        self.caller.timeout = timeout
 
-    @decorators.model_check
+    def get_session_token(self):
+        """Gets the session token associated with the current session.
+
+            If a session token has already been established, this is returned.
+
+            >>> prodex.get_session_token()
+            >>> 76f95ec612c45b1bbc536d6f9ccb9f6779e74e59
+
+        :returns: String containing a session token.
+        :rtype: str
+        """
+        return self.token
+
+    @model_check
+    def find(self, model, filters=None, fields=None, omit=None, order=None):
+        payload = {}
+        payload.update(utils.create_filters_payload(filters=filters))
+        payload.update(
+            utils.create_fields_payload(action="fields", fields=fields)
+        )
+        payload.update(utils.create_fields_payload(action="omit", fields=omit))
+        payload.update(utils.create_ordering_payload(order=order))
+
+        response = self.caller.retrieve(
+            endpoint=constants.TRANSLATION.get(model), payload=payload
+        )
+        return response
+
+    @model_check
     def create(self, model, data):
-        ...
+        response = self.caller.create(
+            endpoint=constants.TRANSLATION.get(model), data=data
+        )
+        return response
 
-    @decorators.model_check
+    @model_check
     def update(self, model, model_id, data):
         ...
 
-    @decorators.model_check
+    @model_check
     def delete(self, model, model_id):
-        ...
+        response = self.caller.delete(
+            endpoint=constants.TRANSLATION.get(model),
+            model_id=model_id,
+        )
+        return response
 
-    @decorators.model_check
+    @model_check
     def restore(self, model, model_id):
-        ...
+        response = self.caller.restore(
+            endpoint=constants.TRANSLATION.get(model),
+            model_id=model_id,
+        )
+        return response
 
-    @decorators.model_check
+    @model_check
     def get_fields(self, model):
-        ...
+        response = self.caller.retrieve_schema(
+            endpoint=constants.TRANSLATION.get(model)
+        )
+        return response
+
+    def get_projects_user(self, user_id):
+        endpoint = "users/{user_id}/projects".format(user_id=user_id)
+        response = self.caller.retrieve(endpoint=endpoint)
+        return response
 
 
 if __name__ == "__main__":
     prodex = ProdEx(
         url="http://127.0.0.1:8000/", login="root", password="PRODEX"
     )
-    prodex.find("User", filters=[["id", "is", 1]])
+    users = prodex.find(
+        "User",
+        fields=["id", "first_name", "last_name"],
+        order={"field": "first_name", "direction": "ASC"},
+    )
+
+    from pprint import pprint
+
+    pprint(users)
