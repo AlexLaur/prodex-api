@@ -76,6 +76,12 @@ class ServiceUnavailable(ApiError):
     pass
 
 
+class NotAuthenticated(ApiError):
+    """Raised when the authentication process failed"""
+
+    pass
+
+
 class Model(object):
     def __init__(self, url):
 
@@ -98,26 +104,42 @@ class Model(object):
         self.headers = {"Authorization": "Token {token}".format(token=token)}
 
     def connection(self, login, password):
-        data = {"username": login, "password": password}
+        """Initialize the connection with the application thanks to the given
+        credentials. If the credentials are corrects, the session token
+        and the authenticated user is returned.
 
+        :param login: The login as credential
+        :type login: str
+        :param password: The password as credential
+        :type password: str
+        :raises NotAuthenticated: If the reponse doesn't contain the session
+        token
+        :return: The token and the authenticated user
+        :rtype: tuple
+        """
+        data = {"username": login, "password": password}
         response = requests.post(
             "{url}/token-auth/".format(url=self.url), data=data
         )
-
         check_status_code(response=response, expected=200)
-
         if not response.json().get("token", None):
-            # TODO raise authentication error
-            ...
-
+            raise NotAuthenticated(response.json())
         token = response.json().get("token")
         user_obj = response.json().get("user")
-
         self.__generate_headers(token=token)
-
         return token, user_obj
 
     def create(self, endpoint, data):
+        """Executes a request with the POST method in order to create
+        a new entity on the application
+
+        :param endpoint: The endpoint for the creation
+        :type endpoint: str
+        :param data: The data of the new entity
+        :type data: dict
+        :return: The created entity if the request is a success
+        :rtype: dict
+        """
         response = requests.post(
             "{url}/{endpoint}/".format(url=self.url, endpoint=endpoint),
             headers=self.headers,
@@ -127,6 +149,18 @@ class Model(object):
         return response.json()
 
     def retrieve(self, endpoint, payload=None):
+        """Executes a request with the GET method in order to retrieve the
+        desired ressource.
+        The payload is a dictionnary wich contains all filters, all desired
+        fields, or all omits fields, and the desired order.
+
+        :param endpoint: The endpoint for retrieve
+        :type endpoint: str
+        :param payload: The payload, defaults to None
+        :type payload: dict, optional
+        :return: The result of the request
+        :rtype: list
+        """
         response = requests.get(
             "{url}/{endpoint}/".format(url=self.url, endpoint=endpoint),
             headers=self.headers,
@@ -137,9 +171,41 @@ class Model(object):
         return response.json()
 
     def update(self, endpoint, model_id, data):
-        pass
+        """Executes a request with the PATCH method in order to update the
+        desired ressource.
+        If the request is done, the updated entity is returned.
+
+        :param endpoint: The endpoint for the update
+        :type endpoint: str
+        :param model_id: The id of the model to update
+        :type model_id: int
+        :param data: The data for the model to update
+        :type data: dict
+        :return: The updated model
+        :rtype: data
+        """
+        response = requests.patch(
+            "{url}/{endpoint}/{model_id}/".format(
+                url=self.url, endpoint=endpoint, model_id=model_id
+            ),
+            headers=self.headers,
+            data=data,
+        )
+
+        check_status_code(response=response, expected=200)
+        return response.json()
 
     def delete(self, endpoint, model_id):
+        """Executes a request with the DELETE method in order to delete the
+        desired ressource.
+
+        :param endpoint: The endpoint for the deletion
+        :type endpoint: str
+        :param model_id: The id of the model to delete
+        :type model_id: int
+        :return: The deleted ressource
+        :rtype: dict
+        """
         response = requests.delete(
             "{url}/{endpoint}/{model_id}/".format(
                 url=self.url, endpoint=endpoint, model_id=model_id
@@ -151,6 +217,16 @@ class Model(object):
         return response.json()
 
     def restore(self, endpoint, model_id):
+        """Execute a request with the PATCH method in order to restore a
+        deleted ressource.
+
+        :param endpoint: The endpoint for the restore
+        :type endpoint: str
+        :param model_id: The id of the model to restore
+        :type model_id: int
+        :return: The restored ressource
+        :rtype: dict
+        """
         response = requests.patch(
             "{url}/{endpoint}/{model_id}/restore/".format(
                 url=self.url, endpoint=endpoint, model_id=model_id
@@ -161,9 +237,34 @@ class Model(object):
         check_status_code(response=response, expected=200)
         return response.json()
 
-    def retrieve_schema(self, endpoint):
+    def retrieve_fields(self, endpoint):
+        """Executes a request with the GET method in order to get all fields
+        of a model.
+
+        :param endpoint: The endpoint for the request
+        :type endpoint: str
+        :return: The list of all fields
+        :rtype: list
+        """
         response = requests.get(
             "{url}/{endpoint}/fields/".format(url=self.url, endpoint=endpoint),
+            headers=self.headers,
+        )
+
+        check_status_code(response=response, expected=200)
+        return response.json()
+
+    def retrieve_schema_fields(self, endpoint):
+        """Executes a request with the OPTIONS method in order to get the
+        schema of a model.
+
+        :param endpoint: The endpoint for the request
+        :type endpoint: str
+        :return: The schema of the model
+        :rtype: dict
+        """
+        response = requests.options(
+            "{url}/{endpoint}/".format(url=self.url, endpoint=endpoint),
             headers=self.headers,
         )
 
