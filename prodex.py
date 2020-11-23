@@ -42,6 +42,7 @@ class ProdEx(object):
         :type password: str, optional
         """
         self.token = None
+        self.authenticated_user = None
         self.headers = None
 
         self.url = utils.build_url_base(url=url)
@@ -61,7 +62,7 @@ class ProdEx(object):
         :type password: str
         :raises ValueError: Raise ValueError is token doesn't exists
         """
-        self.token, self.user = self.caller.connection(
+        self.token, self.authenticated_user = self.caller.connection(
             login=login, password=password
         )
         if not self.token:
@@ -89,6 +90,14 @@ class ProdEx(object):
         """
         return self.token
 
+    def get_authenticated_user(self):
+        """Gets the current athenticated user.
+
+        :returns: Current user as a dictionnary.
+        :rtype: dict
+        """
+        return self.authenticated_user
+
     @model_check
     def find(self, model, filters=None, fields=None, omit=None, order=None):
         payload = {}
@@ -106,14 +115,70 @@ class ProdEx(object):
 
     @model_check
     def create(self, model, data):
+        data = utils.data_conformation(data=data)
         response = self.caller.create(
             endpoint=constants.TRANSLATION.get(model), data=data
         )
         return response
 
     @model_check
-    def update(self, model, model_id, data):
-        ...
+    def update(self, model, model_id, data, m2m_modes=None):
+        data = utils.data_conformation(data=data)
+        endpoint = constants.TRANSLATION.get(model)
+        if not m2m_modes:
+            response = self.caller.update(
+                endpoint=endpoint,
+                model_id=model_id,
+                data=data,
+            )
+        else:
+            # need to retrieve all informations because we need to make a put
+            # request for updating m2m fields.
+            if not isinstance(m2m_modes, dict):
+                raise ValueError("m2m_modes attribut must be a dict.")
+
+            payload = {"id": model_id}
+            payload.update(
+                utils.create_fields_payload(
+                    action="omit",
+                    fields=[
+                        "thumbnail",
+                        "updated_by",
+                        "updated_at",
+                        "created_by",
+                        "created_at",
+                        "trashed_at",
+                        "id",
+                    ],
+                )
+            )
+            initial_data = self.caller.retrieve(
+                endpoint=endpoint, payload=payload
+            )
+            if not initial_data:
+                raise ValueError(
+                    "No object found for model {model} and id {model_id}".format(
+                        model=model, model_id=model_id
+                    )
+                )
+            initial_data = utils.data_conformation(data=initial_data[0])
+            modified_data = utils.many_to_many_data_constructor(
+                initial_data=initial_data,
+                data=data,
+                m2m_modes=m2m_modes,
+            )
+
+            m2m_fields = list(m2m_modes.keys())
+            for m2m_field in m2m_fields:
+                data.pop(m2m_field, None)
+            modified_data.update(data)
+
+            response = self.caller.update(
+                endpoint=endpoint,
+                model_id=model_id,
+                data=modified_data,
+            )
+        return response
 
     @model_check
     def delete(self, model, model_id):
@@ -132,8 +197,15 @@ class ProdEx(object):
         return response
 
     @model_check
+    def get_schema_fields(self, model):
+        response = self.caller.retrieve_schema_fields(
+            endpoint=constants.TRANSLATION.get(model)
+        )
+        return response
+
+    @model_check
     def get_fields(self, model):
-        response = self.caller.retrieve_schema(
+        response = self.caller.retrieve_fields(
             endpoint=constants.TRANSLATION.get(model)
         )
         return response
@@ -143,17 +215,22 @@ class ProdEx(object):
         response = self.caller.retrieve(endpoint=endpoint)
         return response
 
+    def get_task_status(self, task_id):
+        endpoint = "task-status/{task_id}".format(task_id=task_id)
+        response = self.caller.retrieve(endpoint=endpoint)
+        return response
+
 
 if __name__ == "__main__":
+    from pprint import pprint
+
     prodex = ProdEx(
         url="http://127.0.0.1:8000/", login="root", password="PRODEX"
     )
-    users = prodex.find(
-        "User",
-        fields=["id", "first_name", "last_name"],
-        order={"field": "first_name", "direction": "ASC"},
-    )
-
-    from pprint import pprint
-
-    pprint(users)
+    # users = prodex.find(
+    #     "User",
+    #     fields=["id", "first_name", "last_name"],
+    #     order={"field": "first_name", "direction": "ASC"},
+    # )
+    #
+    # pprint(users)
