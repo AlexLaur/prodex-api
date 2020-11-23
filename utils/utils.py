@@ -144,3 +144,87 @@ def create_ordering_payload(order=None):
         field = "-{field}".format(field=field)
     payload["ordering"] = field
     return payload
+
+
+def data_conformation(data):
+    """Conform the data before the API call in order to transform
+    all dictionnary, which represent entity like an id.
+
+    :param data: The data to conform
+    :type data: dict
+    """
+    for key, values in data.items():
+        if isinstance(values, dict):
+            _id = values.get("id", None)
+            if not _id:
+                raise ValueError("You need to give an id for this.")
+            data[key] = _id
+        elif isinstance(values, list):
+            new_values = []
+            for value in values:
+                if isinstance(value, dict):
+                    _id = value.get("id", None)
+                    if not _id:
+                        raise ValueError("You need to give an id for this.")
+                    new_values.append(_id)
+                elif isinstance(value, int):
+                    new_values.append(value)
+                else:
+                    continue
+            data[key] = new_values
+    return data
+
+
+def many_to_many_data_constructor(initial_data, data, m2m_modes):
+    """Builds the data for the update when the m2m_modes is defined.
+    It only update m2m fields with the new data.
+
+    :param initial_data: The initial data before any modification
+    :type initial_data: dict
+    :param data: The new data to update
+    :type data: dict
+    :param m2m_modes: The many to many modes
+    :type m2m_modes: dict
+    :raises TypeError: If the field given in m2m_modes is not
+    a many to many field
+    :raises ValueError: If the given mode is not "add", "remove" or "set"
+    :raises TypeError: If the data for a m2m field is not an array
+    :return: The modified data for the update
+    :rtype: dict
+    """
+    fields = list(initial_data.keys())
+    _allowed_modes = ["add", "remove", "set"]
+
+    for field, m2m_mode in m2m_modes.items():
+        if field not in fields:
+            continue
+        if not isinstance(initial_data[field], list):
+            raise TypeError("{field} is not a m2m field.".format(field=field))
+        if m2m_mode not in _allowed_modes:
+            raise ValueError(
+                "Mode must be in {modes}".format(modes=_allowed_modes)
+            )
+
+        _data = data.get(field, None)
+        if not _data:
+            continue
+        if not isinstance(_data, list):
+            raise TypeError(
+                "data for {field} must be an array.".format(field=field)
+            )
+
+        if m2m_mode == "add":
+            for value in _data:
+                if value in initial_data[field]:
+                    continue
+                initial_data[field].append(value)
+
+        elif m2m_mode == "remove":
+            for value in _data:
+                if value in initial_data[field]:
+                    initial_data[field].pop(initial_data[field].index(value))
+
+        else:  # set mode by default
+            initial_data[field] = _data
+
+    return initial_data
