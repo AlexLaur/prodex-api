@@ -24,6 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import os
+
 from . import constants
 
 
@@ -228,3 +230,18 @@ def many_to_many_data_constructor(initial_data, data, m2m_modes):
             initial_data[field] = _data
 
     return initial_data
+
+
+def prepare_thumbnail_file(path):
+    """Prepares the given file for an upload as thumbnail
+
+    :param path: The path of the image to upload
+    :type path: str
+    :raises IOError: If the file doesn't exists
+    :return: Dictionnary with the field "thumbnail" as key and the image data
+    (binary) as value.
+    :rtype: dict
+    """
+    if not os.path.exists(path):
+        raise IOError("The specified file doesn't exists.")
+    return {"thumbnail": open(path, "rb")}

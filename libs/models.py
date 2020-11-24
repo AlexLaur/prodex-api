@@ -129,7 +129,7 @@ class Model(object):
         self.__generate_headers(token=token)
         return token, user_obj
 
-    def create(self, endpoint, data):
+    def create(self, endpoint, data, files=None):
         """Executes a request with the POST method in order to create
         a new entity on the application
 
@@ -137,6 +137,8 @@ class Model(object):
         :type endpoint: str
         :param data: The data of the new entity
         :type data: dict
+        :param files: The files to upload for the model, defaults to None
+        :type files: dict, optional
         :return: The created entity if the request is a success
         :rtype: dict
         """
@@ -144,6 +146,7 @@ class Model(object):
             "{url}/{endpoint}/".format(url=self.url, endpoint=endpoint),
             headers=self.headers,
             data=data,
+            files=files,
         )
         check_status_code(response=response, expected=201)
         return response.json()
@@ -170,7 +173,7 @@ class Model(object):
         check_status_code(response=response, expected=200)
         return response.json()
 
-    def update(self, endpoint, model_id, data):
+    def update(self, endpoint, model_id, data=None, files=None):
         """Executes a request with the PATCH method in order to update the
         desired ressource.
         If the request is done, the updated entity is returned.
@@ -179,8 +182,10 @@ class Model(object):
         :type endpoint: str
         :param model_id: The id of the model to update
         :type model_id: int
-        :param data: The data for the model to update
-        :type data: dict
+        :param data: The data for the model to update, defaults to None
+        :type data: dict, optional
+        :param files: The files to upload for the model, defaults to None
+        :type files: dict, optional
         :return: The updated model
         :rtype: data
         """
@@ -190,6 +195,7 @@ class Model(object):
             ),
             headers=self.headers,
             data=data,
+            files=files,
         )
 
         check_status_code(response=response, expected=200)

@@ -24,6 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import os
 
 from utils import constants, utils
 from utils.decorators import model_check
@@ -125,11 +126,16 @@ class ProdEx(object):
     def update(self, model, model_id, data, m2m_modes=None):
         data = utils.data_conformation(data=data)
         endpoint = constants.TRANSLATION.get(model)
+        thumbnail = data.pop("thumbnail", None)
+        files = None
+        if thumbnail:
+            files = utils.prepare_thumbnail_file(path=thumbnail)
         if not m2m_modes:
             response = self.caller.update(
                 endpoint=endpoint,
                 model_id=model_id,
                 data=data,
+                files=files,
             )
         else:
             # need to retrieve all informations because we need to make a put
@@ -167,6 +173,7 @@ class ProdEx(object):
                 endpoint=endpoint,
                 model_id=model_id,
                 data=modified_data,
+                files=files,
             )
         return response
 
@@ -200,7 +207,57 @@ class ProdEx(object):
         )
         return response
 
+    @model_check
+    def upload_thumbnail(self, model, model_id, path):
+        """
+        Upload a file from a local path and assign it as the thumbnail
+        for the specified model.
+
+        .. note::
+            Images will automatically be re-sized on the server to generate a
+            size-appropriate image file. The final format will be a jpg.
+
+        .. note::
+            The updated model is returned when the process is done.
+            The thumbnail filename will be `processing.jpg`, because the
+            cropping process is done in a separate task. When the process
+            is done in the server, the right image path is returned in the
+            thumbnail field.
+
+        Supported image file types include ``.jpg`` and ``.png`` (preferred)
+        But will also accept ``.gif``, ``.tif``, ``.tiff``, ``.bmp``,
+        ``.exr``, ``.dpx``, and ``.tga``.
+
+        :param model: Model to set the thumbnail for
+        :type model: str
+        :param model_id: Id of the model to set the thumbnail for.
+        :type model_id: int
+        :param path: Full path to the thumbnail file on disk.
+        :type path: str
+        :return: The model updated
+        :rtype: dict
+        """
+        files = utils.prepare_thumbnail_file(path=path)
+        response = self.caller.update(
+            endpoint=constants.TRANSLATION.get(model),
+            model_id=model_id,
+            files=files,
+        )
+        return response
+
     def get_projects_user(self, user_id):
+        """Return all projects assigned to an user.
+
+        .. note::
+            This method is a shortcut of the :meth:`~prodex_api.Prodex.find`.
+            Indeed the same result can be done by getting all ``Project``
+            where the ``user_id`` is on ``users_assign`` or ``project_manager``.
+
+        :param user_id: Id of the user.
+        :type user_id: int
+        :return: list of projects
+        :rtype: list
+        """
         endpoint = "users/{user_id}/projects".format(user_id=user_id)
         response = self.caller.retrieve(endpoint=endpoint)
         return response
@@ -224,10 +281,12 @@ if __name__ == "__main__":
     # )
     #
     # pprint(users)
-    # project = prodex.find("Project", filters=[["id", "is", 5]])
-    # pprint(project)
-    data = {"users_assign": [10], "name": "test"}
+    project = prodex.find("Project", filters=[["id", "is", 5]])
+    pprint(project)
+    data = {"users_assign": [10], "name": "Rongle"}
     result = prodex.update(
         "Project", model_id=5, data=data, m2m_modes={"users_assign": "add"}
     )
     pprint(result)
+    # path = "/home/alaurette/Téléchargements/image.jpg"
+    # pprint(prodex.upload_thumbnail("Project", model_id=5, path=path))
