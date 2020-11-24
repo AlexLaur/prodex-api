@@ -137,20 +137,10 @@ class ProdEx(object):
             if not isinstance(m2m_modes, dict):
                 raise ValueError("m2m_modes attribut must be a dict.")
 
+            fields = list(m2m_modes.keys())
             payload = {"id": model_id}
             payload.update(
-                utils.create_fields_payload(
-                    action="omit",
-                    fields=[
-                        "thumbnail",
-                        "updated_by",
-                        "updated_at",
-                        "created_by",
-                        "created_at",
-                        "trashed_at",
-                        "id",
-                    ],
-                )
+                utils.create_fields_payload(action="fields", fields=fields)
             )
             initial_data = self.caller.retrieve(
                 endpoint=endpoint, payload=payload
@@ -167,7 +157,7 @@ class ProdEx(object):
                 data=data,
                 m2m_modes=m2m_modes,
             )
-
+            # update data dict in order to get the full data to update
             m2m_fields = list(m2m_modes.keys())
             for m2m_field in m2m_fields:
                 data.pop(m2m_field, None)
@@ -234,3 +224,10 @@ if __name__ == "__main__":
     # )
     #
     # pprint(users)
+    # project = prodex.find("Project", filters=[["id", "is", 5]])
+    # pprint(project)
+    data = {"users_assign": [10], "name": "test"}
+    result = prodex.update(
+        "Project", model_id=5, data=data, m2m_modes={"users_assign": "add"}
+    )
+    pprint(result)
