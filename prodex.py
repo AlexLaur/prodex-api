@@ -94,6 +94,9 @@ class ProdEx(object):
     def get_authenticated_user(self):
         """Gets the current athenticated user.
 
+            >>> prodex.get_authenticated_user()
+            >>> {"username": "root", ..., "id": 1}
+
         :returns: Current user as a dictionnary.
         :rtype: dict
         """
@@ -116,6 +119,28 @@ class ProdEx(object):
 
     @model_check
     def create(self, model, data):
+        """Create a new object of the specified ``model``.
+
+            >>> data = {
+            ...     "name": "ProdEx Project",
+            ...     "users_assign": [
+            ...         {'id': 4, 'model': 'User', 'username': 'callewell2'},
+            ...         {'id': 90, 'model': 'User', 'username': 'jocarmody2h'},
+            ...         {'id': 569, 'model': 'User', 'username': 'bhucfv'},
+            ...     ],
+            ...     "thumbnail": "path/to/the/thumbnail.png",
+            ... }
+            >>> prodex.create(model="Project", data=data)
+
+        :param model: The model type
+        :type model: str
+        :param data: Dictionary of fields and corresponding values to set
+        on the new object. If ``thumbnail`` field is provided, the file path
+        will be uploaded to the server in the same time.
+        :type data: dict
+        :return: The created object
+        :rtype: dict
+        """
         data = utils.data_conformation(data=data)
         response = self.caller.create(
             endpoint=constants.TRANSLATION.get(model), data=data
@@ -179,6 +204,32 @@ class ProdEx(object):
 
     @model_check
     def delete(self, model, model_id):
+        """Delete the specified model.
+
+        Models in ProdEx are not “deleted” destructively.
+        They are instead, “trashed”. This means their ``trashed_at`` field
+        is set with the datetime of the deletion.
+
+        The model can be brought back to life
+        using :meth:`~prodex_api.ProdEx.restore`.
+
+            >>> prodex.delete(model="Project", model_id=1995)
+
+        .. note::
+            To put a model in the trash you can olso use
+            :meth:`~prodex_api.ProdEx.update` by setting the ``trashed_at``
+            field with the desired datetime.
+
+        .. note::
+            An model can be deleted destructively by delete it a second time.
+
+        :param model: The model type
+        :type model: str
+        :param model_id: The id of the model to delete
+        :type model_id: int
+        :return: The deleted model
+        :rtype: dict
+        """
         response = self.caller.delete(
             endpoint=constants.TRANSLATION.get(model),
             model_id=model_id,
@@ -187,6 +238,23 @@ class ProdEx(object):
 
     @model_check
     def restore(self, model, model_id):
+        """Restore a model that has previously been deleted.
+
+            >>> prodex.restore(model="Project", model_id=3)
+
+        .. note::
+            A deleted object is an object with a value on
+            its ``trashed_at`` field. You can olso restore an object with
+            the :meth:`~prodex_api.Prodex.update` by setting the ``trashed_at``
+            field to ``None``.
+
+        :param model: The model type
+        :type model: str
+        :param model_id: The id of the model to restore
+        :type model_id: str
+        :return: The restored project
+        :rtype: dict
+        """
         response = self.caller.restore(
             endpoint=constants.TRANSLATION.get(model),
             model_id=model_id,
@@ -202,6 +270,19 @@ class ProdEx(object):
 
     @model_check
     def get_fields(self, model):
+        """Return all available fields on the specified model.
+
+            >>> prodex.get_fields(model="Project")
+            >>> ['id', 'name', 'customer', 'status', 'description', 'reference',
+            'location', 'starts_at', 'ends_at', 'thumbnail', 'estimated_time',
+            'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by',
+            'trashed_at', 'archived_at', 'production_manager', 'users_assign']
+
+        :param model: The model to get fields.
+        :type model: str
+        :return: list of all fields
+        :rtype: list
+        """
         response = self.caller.retrieve_fields(
             endpoint=constants.TRANSLATION.get(model)
         )
