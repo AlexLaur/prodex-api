@@ -31,9 +31,9 @@ from utils.decorators import model_check
 from libs.models import Model
 
 
-class ProdEx(object):
-    def __init__(self, url, login, password):
-        """Initializes a new instance of the ProdExp client.
+class Prodex(object):
+    def __init__(self, url, login, password, datetime_convert=False):
+        """Initializes a new instance of the Prodexp client.
 
         :param url: The URL for the the api of prodexp
         :type url: str
@@ -46,10 +46,10 @@ class ProdEx(object):
         self.authenticated_user = None
         self.headers = None
 
+        self._datetime_convert = datetime_convert
+
         self.url = utils.build_url_base(url=url)
-
         self.caller = Model(url=self.url)
-
         self.__connect(login, password)
 
     def __connect(self, login, password):
@@ -122,7 +122,7 @@ class ProdEx(object):
         """Create a new object of the specified ``model``.
 
             >>> data = {
-            ...     "name": "ProdEx Project",
+            ...     "name": "Prodex Project",
             ...     "users_assign": [
             ...         {'id': 4, 'model': 'User', 'username': 'callewell2'},
             ...         {'id': 90, 'model': 'User', 'username': 'jocarmody2h'},
@@ -206,18 +206,18 @@ class ProdEx(object):
     def delete(self, model, model_id):
         """Delete the specified model.
 
-        Models in ProdEx are not “deleted” destructively.
+        Models in Prodex are not “deleted” destructively.
         They are instead, “trashed”. This means their ``trashed_at`` field
         is set with the datetime of the deletion.
 
         The model can be brought back to life
-        using :meth:`~prodex_api.ProdEx.restore`.
+        using :meth:`~prodex_api.Prodex.restore`.
 
             >>> prodex.delete(model="Project", model_id=1995)
 
         .. note::
             To put a model in the trash you can olso use
-            :meth:`~prodex_api.ProdEx.update` by setting the ``trashed_at``
+            :meth:`~prodex_api.Prodex.update` by setting the ``trashed_at``
             field with the desired datetime.
 
         .. note::
@@ -352,7 +352,7 @@ class ProdEx(object):
 if __name__ == "__main__":
     from pprint import pprint
 
-    prodex = ProdEx(
+    prodex = Prodex(
         url="http://127.0.0.1:8000/", login="root", password="PRODEX"
     )
     # users = prodex.find(
