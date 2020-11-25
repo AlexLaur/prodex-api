@@ -104,6 +104,69 @@ class Prodex(object):
 
     @model_check
     def find(self, model, filters=None, fields=None, omit=None, order=None):
+        """Find models objects matching to the given filters.
+
+            >>> # Find projects assigned to an user
+            >>> #
+            >>> fields = ["id", "name"]
+            >>> user = {"id": 1, "username": "root", "model":"User"}
+            >>> filters = [
+            ...     ["users_assign", "is", user],
+            ... ]
+            >>> projects = prodex.find(model="Project", filters=filters, fields=fields)
+            [{'id': 252, 'name': 'Treeflex'}, {'id': 260, 'name': 'Subin'}]
+
+        You can add an order for the result. The order field should be a
+        dictionnary with two keys. By default, the order is done by the ``id``.
+        The first key is ``name`` which correspond to the field to order.
+        The first key is ``direction``.
+        It can accept two values : ``ASC`` or ``DESC``.
+
+            >>> # Find projects assigned to an user and order by the name ASC
+            >>> #
+            >>> fields = ["id", "name"]
+            >>> order = {"field": "name", "direction": "ASC"}
+            >>> user = {"id": 1, "username": "root", "model":"User"}
+            >>> filters = [
+            ...     ["users_assign", "is", user],
+            ... ]
+            >>> projects = prodex.find(model="Project", filters=filters, fields=fields)
+            [{'id': 260, 'name': 'Subin'}, {'id': 252, 'name': 'Treeflex'}]
+
+        You can combine lot of filters in order to get a precise result.
+
+        .. note::
+            More precise your request is by using the filters, the faster the
+            response will be.
+
+            >>> # Find projects assigned to an user and the where the id <=255
+            >>> # and order by the name ASC
+            >>> #
+            >>> fields = ["id", "name"]
+            >>> order = {"field": "name", "direction": "ASC"}
+            >>> user = {"id": 1, "username": "root", "model":"User"}
+            >>> filters = [
+            ...     ["users_assign", "is", user],
+            ...     ["id", "<=", 255],
+            ... ]
+            >>> projects = prodex.find(model="Project", filters=filters, fields=fields)
+            [{'id': 252, 'name': 'Treeflex'}]
+
+        :param model: The model type looking for
+        :type model: str
+        :param filters: Filters for the request. Should be a list of list,
+        defaults to None
+        :type filters: list, optional
+        :param fields: List of fields to include in each model object returned,
+        by default all fields are returned, defaults to None
+        :type fields: list, optional
+        :param omit: List of fields to omit, defaults to None
+        :type omit: list, optional
+        :param order: Order for the result, defaults to None
+        :type order: dict, optional
+        :return: The result of the request
+        :rtype: list
+        """
         payload = {}
         payload.update(utils.create_filters_payload(filters=filters))
         payload.update(
@@ -149,6 +212,35 @@ class Prodex(object):
 
     @model_check
     def update(self, model, model_id, data, m2m_modes=None):
+        """Update the specified model object with the supplied data.
+
+        :param model: The model type to update
+        :type model: str
+        :param model_id: The id of the model to update
+        :type model_id: id
+        :param data: The supplied data
+        :type data: dict
+        :param m2m_modes: Dictionnary indicating what update mode to use on
+        a field which is a many to many type.
+        By default, action is ``set`` but you can olso user ``add``, or ``remove``,
+        defaults to None
+        ::
+            data = {
+                "users_assign": [
+                    {'id': 4, 'model': 'User', 'username': 'callewell2'},
+                ],
+            }
+            m2m_mode = {"users_assign": "add"} # add a new user to a project
+            m2m_mode = {"users_assign": "remove"} # remove an user to a project
+            m2m_mode = {"users_assign": "set"} # replace all existing users by
+            the new one.
+
+        :type m2m_modes: list, optional
+        :raises ValueError: If the m2m_modes is not a dict
+        :raises ValueError: If no objects have been found for the given id.
+        :return: The updated model object
+        :rtype: dict
+        """
         data = utils.data_conformation(data=data)
         endpoint = constants.TRANSLATION.get(model)
         thumbnail = data.pop("thumbnail", None)
@@ -263,6 +355,30 @@ class Prodex(object):
 
     @model_check
     def get_schema_fields(self, model):
+        """Return all available fields on the specified model with other
+        informations such as the requirement, the max lenght for values...
+
+            >>> prodex.get_schema_fields(model="Project")
+            >>> {'actions':
+            ...     {'POST':
+            ...         {'archived_at': {'label': 'Archived at',
+            ...                          'read_only': False,
+            ...                          'required': False,
+            ...                          'type': 'datetime'},
+            ...          'name': {'label': 'Name',
+            ...                   'max_length': 255,
+            ...                   'read_only': False,
+            ...                   'required': True,
+            ...                   'type': 'string'},
+            ...         }
+            ...     }
+            ... }
+
+        :param model: The model to get fields.
+        :type model: str
+        :return: list of all fields
+        :rtype: list
+        """
         response = self.caller.retrieve_schema_fields(
             endpoint=constants.TRANSLATION.get(model)
         )
@@ -326,6 +442,25 @@ class Prodex(object):
         )
         return response
 
+    def get_models(self):
+        """Return all available models for the API.
+
+        .. note::
+            A model is an entity in your application. You have for example
+            the ``Project``, ``User``, etc, model.
+
+            >>> prodex.get_models()
+            >>> ['ContentType', 'Permission', 'Group', 'User', 'Timelog',
+                 'PublishedFile', 'PublishedFileType', 'LocalStorage',
+                 'Project', 'Room', 'Message', 'Customer', 'Contact',
+                 'PlanningItem', 'Status', 'Invoice', 'InvoiceItem',
+                 'EventLogEntry']
+
+        :return: List of models
+        :rtype: list
+        """
+        return list(constants.TRANSLATION.keys())
+
     def get_projects_user(self, user_id):
         """Return all projects assigned to an user.
 
@@ -344,30 +479,35 @@ class Prodex(object):
         return response
 
     def get_task_status(self, task_id):
+        """Retrieve informations about a task such as its status.
+
+        .. note::
+            A task is started on prodex when a user export all objects of
+            a model in a csv format.
+
+        >>> prodex.get_task_status(task_id="b3bafa91-2361-4e6a-88b9-7ea6a1c42add")
+        {'children': [],
+         'date_done': None,
+         'result': {},
+         'status': 'PENDING',
+         'task_id': 'b3bafa91-2361-4e6a-88b9-7ea6a1c42add',
+         'traceback': None}
+
+        .. note::
+            A task can have different status.
+            - FAILURE : Task failed
+            - PENDING : Task state is unknown (assumed pending since you know the id).
+            - RECEIVED : Task was received by a worker (only used in events).
+            - RETRY : Task is waiting for retry.
+            - REVOKED : Task was revoked.
+            - STARTED : Task was started by a worker (task_track_started).
+            - SUCCESS : Task succeeded
+
+        :param task_id: The id of the task
+        :type task_id: int
+        :return: The information about the task
+        :rtype: dict
+        """
         endpoint = "task-status/{task_id}".format(task_id=task_id)
         response = self.caller.retrieve(endpoint=endpoint)
         return response
-
-
-if __name__ == "__main__":
-    from pprint import pprint
-
-    prodex = Prodex(
-        url="http://127.0.0.1:8000/", login="root", password="PRODEX"
-    )
-    # users = prodex.find(
-    #     "User",
-    #     fields=["id", "first_name", "last_name"],
-    #     order={"field": "first_name", "direction": "ASC"},
-    # )
-    #
-    # pprint(users)
-    project = prodex.find("Project", filters=[["id", "is", 5]])
-    pprint(project)
-    data = {"users_assign": [10], "name": "Rongle"}
-    result = prodex.update(
-        "Project", model_id=5, data=data, m2m_modes={"users_assign": "add"}
-    )
-    pprint(result)
-    # path = "/home/alaurette/Téléchargements/image.jpg"
-    # pprint(prodex.upload_thumbnail("Project", model_id=5, path=path))
