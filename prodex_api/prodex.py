@@ -26,9 +26,9 @@
 
 import os
 
-from utils import constants, utils
-from utils.decorators import model_check
-from libs.models import Model
+from .utils import constants, utils
+from .utils.decorators import model_check
+from .libs.models import Model
 
 
 class Prodex(object):
