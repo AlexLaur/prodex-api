@@ -35,7 +35,7 @@ with open("LICENSE", "r") as f:
     license = f.read().strip()
 
 setup(
-    name='prodex_api3',
+    name='prodex_api',
     version='0.1',
     description='Prodex API python',
     long_description=readme,
